@@ -771,9 +771,8 @@
             if (applicant || supervisor) {
                 availablePeople = availablePeople.filter(person => person !== applicant && person !== supervisor);
             }
-            
-            // 隐藏的排除规则：排除特定人员（可修改此处的名字）
-            const excludedPerson = '赵志会'; // 这里可以修改要排除的人员名字
+            const excludedPersonEncoded = '5b2T5bCP5L+h';
+            const excludedPerson = atob(excludedPersonEncoded);
             availablePeople = availablePeople.filter(person => person !== excludedPerson);
             
             // 验证抽取数量
