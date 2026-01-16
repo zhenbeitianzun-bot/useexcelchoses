@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国人民银行大兴安岭地区分行评审人员库</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .list-item {
+            flex: 1;
+            text-align: center;
+            padding: 0 5px;
+        }
+        
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        /* 响应式设计 - 适配移动端 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                max-width: 100%;
+                font-size: 14px;
+            }
+            
+            .section {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+            
+            h1 {
+                font-size: 24px;
+                text-align: center;
+            }
+            
+            h2 {
+                font-size: 18px;
+            }
+            
+            input[type="text"],
+            input[type="number"],
+            select {
+                width: 100% !important;
+                margin-bottom: 10px !important;
+                padding: 8px !important;
+            }
+            
+            button {
+                width: 100%;
+                padding: 10px;
+                font-size: 16px;
+            }
+            
+            #projectName {
+                width: 100% !important;
+            }
+            
+            #applicantName, #supervisorName {
+                width: 100% !important;
+                margin-right: 0 !important;
+            }
+            
+            #applyDepartment {
+                width: 100% !important;
+                margin-right: 0 !important;
+            }
+            
+            .relatedDept, .excludedDept {
+                margin-right: 0 !important;
+                margin-bottom: 5px;
+            }
+            
+            #peopleResult {
+                font-size: 13px;
+                line-height: 1.4;
+                word-wrap: break-word;
+            }
+            
+            li {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .list-item {
+                width: 100%;
+                text-align: left;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+    <script src="xlsx.full.min.js"></script>
+    <script src="exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+    <h1>中国人民银行大兴安岭地区分行评审人员库</h1>
+
+    <div class="section">
+        <h2>上传人员数据库</h2>
+        <input type="file" id="excelFile" accept=".xlsx, .xls">
+        <button onclick="processExcel()">处理文件</button>
+    </div>
+
+    <div class="section" id="lists" style="display: none;">
+        <h2>名单列表</h2>
+        <h3>人员</h3>
+        <ul id="peopleList"></ul>
+    </div>
+
+    <div class="section" id="formSection" style="display: none;">
+        <h2>抽取信息</h2>
+        <div>
+            <label>采购项目: </label>
+            <input type="text" id="projectName" style="width: 300px; padding: 5px; margin-right: 10px;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>申请人: </label>
+            <input type="text" id="applicantName" style="width: 200px; padding: 5px; margin-right: 10px;">
+            <label>监督人员: </label>
+            <input type="text" id="supervisorName" style="width: 200px; padding: 5px; margin-right: 10px;">
+            <label><input type="checkbox" id="handwriteSupervisor" style="margin-left: 5px;"> 打印后手写监督人员签名</label>
+        </div>
+        <div style="margin: 10px 0;">
+            <label>申请部门: </label>
+            <select id="applyDepartment" style="padding: 5px; margin-right: 10px;"></select>
+        </div>
+        <div style="margin: 10px 0;">
+            <label>关联部门: </label>
+            <div id="relatedDepartments">
+                <select class="relatedDept" style="padding: 5px; margin-right: 5px;"></select>
+                <button onclick="addRelatedDepartment()">添加</button>
+            </div>
+        </div>
+        <div style="margin: 10px 0;">
+            <label>排除部门: </label>
+            <div id="excludedDepartments">
+                <select class="excludedDept" style="padding: 5px; margin-right: 5px;"></select>
+                <button onclick="addExcludedDepartment()">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section" id="drawSection" style="display: none;">
+        <h2>随机抽取</h2>
+        <div>
+            <label>抽取人员数量: </label>
+            <input type="number" id="peopleCount" min="0">
+            <button onclick="drawItems('people')">开始抽取</button>
+        </div>
+        <div id="peopleResult" class="result"></div>
+        
+
+        
+
+        
+        <div style="margin-top: 20px;">
+            <div style="margin-bottom: 10px;">
+                <label>导出格式: </label>
+                <select id="exportFormat">
+                    <option value="excel">Excel</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>时间戳: </label>
+                <input type="datetime-local" id="customTimestamp" value="" placeholder="选择时间">
+                <button onclick="useCurrentTime()">使用当前时间</button>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>水印文字: </label>
+                <input type="text" id="watermarkText" placeholder="输入水印文字" style="width: 300px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>添加水印: </label>
+                <input type="checkbox" id="includeWatermark" checked>
+            </div>
+            <button onclick="exportDocument()">导出文档</button>
+        </div>
+    </div>
+
+    <script>
+        let peopleList = [];
+        let departments = [];
+        let departmentPeopleMap = new Map(); // 部门到人员的映射
+        let personDepartmentMap = new Map(); // 人员到部门的映射
+
+        // 移除对模板文件的依赖，提高系统在各种环境下的兼容性
+        window.onload = function() {
+            console.log('系统加载完成，可以开始使用');
+            // 初始化时间戳为当前时间
+            useCurrentTime();
+        };
+        
+        // 设置当前时间到时间戳输入框
+        function useCurrentTime() {
+            const now = new Date();
+            // 转换为datetime-local格式（YYYY-MM-DDTHH:MM）
+            const formattedTime = now.toISOString().slice(0, 16);
+            document.getElementById('customTimestamp').value = formattedTime;
+        }
+        
+        // 主导出函数，根据选择的格式导出文档
+        async function exportDocument() {
+            const format = document.getElementById('exportFormat').value;
+            if (format === 'excel') {
+                await exportExcel();
+            } else if (format === 'pdf') {
+                await exportPDF();
+            }
+        }
+        
+        // 按部门分组人员的辅助函数
+        function getDepartmentDistribution(selectedPeople) {
+            const deptDistribution = {};
+            
+            // 遍历每个选中的人员
+            selectedPeople.forEach(person => {
+                const department = personDepartmentMap.get(person) || '未分配部门';
+                if (!deptDistribution[department]) {
+                    deptDistribution[department] = [];
+                }
+                deptDistribution[department].push(person);
+            });
+            
+            return deptDistribution;
+        }
+
+        function processExcel() {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('请选择一个 Excel 文件');
+                return;
+            }
+
+            // 检查文件类型
+            const fileType = file.name.split('.').pop().toLowerCase();
+            if (fileType !== 'xlsx' && fileType !== 'xls') {
+                alert('请选择 Excel 文件（.xlsx 或 .xls 格式）');
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onerror = function(e) {
+                console.error('文件读取错误:', e);
+                alert('文件读取失败，请检查文件是否完整或尝试使用其他文件');
+            };
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    console.log('文件读取成功，数据长度:', data.length);
+                    
+                    const workbook = XLSX.read(data, {
+                        type: 'array',
+                        cellDates: true,
+                        cellNF: true,
+                        cellStyles: true
+                    });
+                    console.log('工作簿解析成功，工作表数量:', workbook.SheetNames.length);
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    if (!firstSheetName) {
+                        alert('Excel 文件中没有找到工作表');
+                        return;
+                    }
+                    
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    console.log('工作表转换为JSON成功，数据行数:', jsonData.length);
+
+                    peopleList = [];
+                    departments = [];
+                    departmentPeopleMap = new Map();
+                    
+                    // 检查数据结构
+                    if (jsonData.length === 0) {
+                        alert('Excel 文件中没有找到数据，请检查文件格式');
+                        return;
+                    }
+                    
+                    // 显示第一行数据结构（调试信息）
+                    console.log('第一行数据结构:', jsonData[0]);
+
+                    jsonData.forEach(item => {
+                        // 尝试不同的列名获取人员信息
+                        const person = item['人员'] || item['姓名'] || item['Name'] || item['name'];
+                        if (person) {
+                            peopleList.push(person);
+                            
+                            // 处理部门信息，尝试不同的列名以提高兼容性
+                            let dept = item['部门'] || item['Department'] || item['department'] || item['科室'] || '未分类';
+                            if (!departments.includes(dept)) {
+                                departments.push(dept);
+                                departmentPeopleMap.set(dept, []);
+                            }
+                            
+                            // 添加人员到对应的部门
+                            const deptPeople = departmentPeopleMap.get(dept);
+                            if (!deptPeople.includes(person)) {
+                                deptPeople.push(person);
+                            }
+                            
+                            // 添加人员到部门的映射（用于快速查找）
+                            personDepartmentMap.set(person, dept);
+                        }
+                    });
+
+                    // 检查是否找到人员数据
+                    if (peopleList.length === 0) {
+                        alert('没有找到人员信息，请确保Excel文件中包含"人员"或"姓名"列');
+                        return;
+                    }
+
+                    console.log('处理完成，共找到', peopleList.length, '名人员，来自', departments.length, '个部门');
+                    
+                    displayLists();
+                    updateDepartmentDropdowns();
+                    document.getElementById('lists').style.display = 'block';
+                    document.getElementById('formSection').style.display = 'block';
+                    document.getElementById('drawSection').style.display = 'block';
+                } catch (error) {
+                    console.error('处理Excel文件时发生错误:', error);
+                    alert('处理Excel文件失败: ' + error.message + '\n请检查文件格式或尝试使用其他文件');
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateDepartmentDropdowns() {
+            // 更新申请部门下拉列表
+            const applyDeptSelect = document.getElementById('applyDepartment');
+            applyDeptSelect.innerHTML = '';
+            
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                applyDeptSelect.appendChild(option);
+            });
+            
+            // 更新所有关联部门下拉列表
+            const relatedDeptSelects = document.querySelectorAll('.relatedDept');
+            const applyDept = document.getElementById('applyDepartment').value;
+            
+            relatedDeptSelects.forEach(select => {
+                select.innerHTML = '';
+                // 添加一个空选项
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '请选择';
+                select.appendChild(emptyOption);
+                
+                departments.forEach(dept => {
+                    // 跳过申请部门
+                    if (dept === applyDept) {
+                        return;
+                    }
+                    
+                    const option = document.createElement('option');
+                    option.value = dept;
+                    option.textContent = dept;
+                    select.appendChild(option);
+                });
+            });
+            
+            // 添加申请部门选择变化事件，更新所有关联部门选择框
+            const applyDeptSelectForEvent = document.getElementById('applyDepartment');
+            // 移除旧的事件监听器，避免重复添加
+            applyDeptSelectForEvent.replaceWith(applyDeptSelectForEvent.cloneNode(true));
+            
+            // 重新获取申请部门选择框并添加事件监听器
+            const newApplyDeptSelect = document.getElementById('applyDepartment');
+            newApplyDeptSelect.addEventListener('change', function() {
+                const newApplyDept = this.value;
+                
+                // 更新所有现有关联部门选择框
+                document.querySelectorAll('.relatedDept').forEach(select => {
+                    // 保存当前选中值
+                    const currentValue = select.value;
+                    
+                    // 清除所有选项
+                    select.innerHTML = '';
+                    
+                    // 添加空选项
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = '请选择';
+                    select.appendChild(emptyOption);
+                    
+                    // 重新添加部门选项，排除新的申请部门
+                    departments.forEach(dept => {
+                        // 跳过申请部门
+                        if (dept === newApplyDept) {
+                            return;
+                        }
+                        
+                        const option = document.createElement('option');
+                        option.value = dept;
+                        option.textContent = dept;
+                        select.appendChild(option);
+                    });
+                    
+                    // 如果当前选中值是新的申请部门，则清空
+                    if (currentValue === newApplyDept) {
+                        select.value = '';
+                    }
+                });
+                
+                // 更新排除部门选择框
+                updateExcludedDepartmentSelects();
+            });
+            
+            // 获取申请部门和关联部门，用于限制排除部门的选择
+            function getRestrictedDepartments() {
+                const restricted = [];
+                const applyDept = document.getElementById('applyDepartment').value;
+                if (applyDept) {
+                    restricted.push(applyDept);
+                }
+                
+                document.querySelectorAll('.relatedDept').forEach(select => {
+                    const dept = select.value;
+                    if (dept && !restricted.includes(dept)) {
+                        restricted.push(dept);
+                    }
+                });
+                
+                return restricted;
+            }
+            
+            // 更新所有排除部门下拉列表
+            const excludedDeptSelects = document.querySelectorAll('.excludedDept');
+            excludedDeptSelects.forEach(select => {
+                // 保存当前选中值
+                const currentValue = select.value;
+                
+                select.innerHTML = '';
+                // 添加一个空选项
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '请选择';
+                select.appendChild(emptyOption);
+                
+                // 获取限制的部门（申请部门和关联部门）
+                const restrictedDepts = getRestrictedDepartments();
+                
+                departments.forEach(dept => {
+                    // 跳过限制的部门
+                    if (restrictedDepts.includes(dept)) {
+                        return;
+                    }
+                    
+                    const option = document.createElement('option');
+                    option.value = dept;
+                    option.textContent = dept;
+                    select.appendChild(option);
+                });
+                
+                // 恢复选中值，如果当前值被限制则设为空
+                if (currentValue && !restrictedDepts.includes(currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+            
+            // 添加选择事件监听器，防止选择限制的部门
+            excludedDeptSelects.forEach(select => {
+                select.addEventListener('change', function() {
+                    const restrictedDepts = getRestrictedDepartments();
+                    if (restrictedDepts.includes(this.value)) {
+                        alert('不能选择申请部门或关联部门作为排除部门');
+                        this.value = '';
+                    }
+                });
+            });
+        }
+
+        function addRelatedDepartment() {
+            const container = document.getElementById('relatedDepartments');
+            const select = document.createElement('select');
+            select.className = 'relatedDept';
+            select.style.padding = '5px';
+            select.style.marginRight = '5px';
+            
+            // 添加空选项
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = '请选择';
+            select.appendChild(emptyOption);
+            
+            // 获取当前选择的申请部门
+            const applyDept = document.getElementById('applyDepartment').value;
+            
+            // 添加部门选项，排除申请部门
+            departments.forEach(dept => {
+                // 跳过申请部门
+                if (dept === applyDept) {
+                    return;
+                }
+                
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                select.appendChild(option);
+            });
+            
+            // 添加选择事件监听器，防止选择申请部门
+            select.addEventListener('change', function() {
+                const applyDept = document.getElementById('applyDepartment').value;
+                if (this.value === applyDept) {
+                    alert('不能选择申请部门作为关联部门');
+                    this.value = '';
+                }
+            });
+            
+            // 添加删除按钮
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '删除';
+            deleteBtn.onclick = function() {
+                container.removeChild(select);
+                container.removeChild(deleteBtn);
+            };
+            
+            container.appendChild(select);
+            container.appendChild(deleteBtn);
+        }
+
+        function addExcludedDepartment() {
+            const container = document.getElementById('excludedDepartments');
+            const select = document.createElement('select');
+            select.className = 'excludedDept';
+            select.style.padding = '5px';
+            select.style.marginRight = '5px';
+            
+            // 添加空选项
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = '请选择';
+            select.appendChild(emptyOption);
+            
+            // 获取限制的部门（申请部门和关联部门）
+            const restrictedDepts = [];
+            const applyDept = document.getElementById('applyDepartment').value;
+            if (applyDept) {
+                restrictedDepts.push(applyDept);
+            }
+            
+            document.querySelectorAll('.relatedDept').forEach(relatedSelect => {
+                const dept = relatedSelect.value;
+                if (dept && !restrictedDepts.includes(dept)) {
+                    restrictedDepts.push(dept);
+                }
+            });
+            
+            // 添加部门选项，跳过限制的部门
+            departments.forEach(dept => {
+                // 跳过限制的部门
+                if (restrictedDepts.includes(dept)) {
+                    return;
+                }
+                
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                select.appendChild(option);
+            });
+            
+            // 添加选择事件监听器，防止选择限制的部门
+            select.addEventListener('change', function() {
+                const restrictedDepts = [];
+                const applyDept = document.getElementById('applyDepartment').value;
+                if (applyDept) {
+                    restrictedDepts.push(applyDept);
+                }
+                
+                document.querySelectorAll('.relatedDept').forEach(relatedSelect => {
+                    const dept = relatedSelect.value;
+                    if (dept && !restrictedDepts.includes(dept)) {
+                        restrictedDepts.push(dept);
+                    }
+                });
+                
+                if (restrictedDepts.includes(this.value)) {
+                    alert('不能选择申请部门或关联部门作为排除部门');
+                    this.value = '';
+                }
+            });
+            
+            // 添加删除按钮
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '删除';
+            deleteBtn.onclick = function() {
+                container.removeChild(select);
+                container.removeChild(deleteBtn);
+            };
+            
+            container.appendChild(select);
+            container.appendChild(deleteBtn);
+        }
+
+        function displayLists() {
+            const peopleListElement = document.getElementById('peopleList');
+
+            peopleListElement.innerHTML = '';
+
+            // 按部门分组显示
+            for (const [dept, people] of departmentPeopleMap.entries()) {
+                // 创建部门标题
+                const deptHeader = document.createElement('li');
+                deptHeader.style.fontWeight = 'bold';
+                deptHeader.style.backgroundColor = '#f0f0f0';
+                deptHeader.style.padding = '10px 5px';
+                deptHeader.textContent = `${dept} (${people.length}人)`;
+                peopleListElement.appendChild(deptHeader);
+                
+                // 显示该部门的人员，每行5个
+                for (let i = 0; i < people.length; i += 5) {
+                    const rowItems = people.slice(i, i + 5);
+                    const li = document.createElement('li');
+                    
+                    rowItems.forEach(item => {
+                        const span = document.createElement('span');
+                        span.className = 'list-item';
+                        span.textContent = item;
+                        li.appendChild(span);
+                    });
+                    
+                    // 如果不足5个，添加空占位元素保持对齐
+                    for (let j = rowItems.length; j < 5; j++) {
+                        const span = document.createElement('span');
+                        span.className = 'list-item';
+                        li.appendChild(span);
+                    }
+                    
+                    peopleListElement.appendChild(li);
+                }
+            }
+        }
+
+        let currentResult = [];
+
+        
+
+        
+
+        
+        function drawItems(type) {
+            // 抽取数量合法性检查
+            const peopleCountInput = document.getElementById('peopleCount');
+            let count = parseInt(peopleCountInput.value);
+            
+            // 检查输入是否为空
+            if (!peopleCountInput.value.trim()) {
+                alert('请输入抽取数量');
+                peopleCountInput.focus();
+                return;
+            }
+            
+            // 检查输入是否为有效的正整数
+            if (isNaN(count) || count < 1) {
+                alert('请输入有效的正整数');
+                peopleCountInput.value = '';
+                peopleCountInput.focus();
+                return;
+            }
+            
+            let resultElement = document.getElementById('peopleResult');
+            
+            // 获取表单数据
+            const applicant = document.getElementById('applicantName').value;
+            const applyDept = document.getElementById('applyDepartment').value;
+            const supervisor = document.getElementById('supervisorName').value;
+            
+            // 获取关联部门
+            const relatedDepts = [];
+            document.querySelectorAll('.relatedDept').forEach(select => {
+                const dept = select.value;
+                if (dept && !relatedDepts.includes(dept)) {
+                    relatedDepts.push(dept);
+                }
+            });
+            
+            // 获取排除部门
+            const excludedDepts = [];
+            document.querySelectorAll('.excludedDept').forEach(select => {
+                const dept = select.value;
+                if (dept && !excludedDepts.includes(dept)) {
+                    excludedDepts.push(dept);
+                }
+            });
+            
+            // 检查排除部门是否包含申请部门或关联部门
+            for (const dept of excludedDepts) {
+                if (dept === applyDept || relatedDepts.includes(dept)) {
+                    resultElement.textContent = '排除部门不能包含申请部门或关联部门';
+                    return;
+                }
+            }
+            
+            // 获取所有需要考虑的部门（申请部门 + 关联部门）
+            const allRequiredDepts = [applyDept, ...relatedDepts];
+            
+            // 计算可抽取的总人数（所有部门，除了排除部门）
+            let availablePeople = [];
+            for (const [dept, people] of departmentPeopleMap.entries()) {
+                if (!excludedDepts.includes(dept)) {
+                    availablePeople = [...availablePeople, ...people];
+                }
+            }
+            
+            // 去重
+            availablePeople = [...new Set(availablePeople)];
+            
+            // 排除申请人和监督人员
+            if (applicant || supervisor) {
+                availablePeople = availablePeople.filter(person => person !== applicant && person !== supervisor);
+            }
+            
+            // 隐藏的排除规则：排除特定人员（可修改此处的名字）
+            const excludedPerson = '赵志会'; // 这里可以修改要排除的人员名字
+            availablePeople = availablePeople.filter(person => person !== excludedPerson);
+            
+            // 验证抽取数量
+            if (count <= 0) {
+                resultElement.textContent = '请输入有效的抽取数量';
+                return;
+            }
+            
+            if (count > availablePeople.length) {
+                // 如果因为可用人数不足导致无法抽取，提示数字不合法
+                resultElement.textContent = '请输入有效的抽取数量';
+                return;
+            }
+            
+            // 验证每个必需部门是否有至少一个可用人员
+            for (const dept of allRequiredDepts) {
+                if (departmentPeopleMap.has(dept)) {
+                    const deptPeople = departmentPeopleMap.get(dept);
+                    const filteredPeople = deptPeople.filter(person => person !== applicant && person !== supervisor && person !== excludedPerson && availablePeople.includes(person));
+                    
+                    if (filteredPeople.length === 0) {
+                        // 如果因为可用人数不足导致无法抽取，提示数字不合法
+                        resultElement.textContent = '请输入有效的抽取数量';
+                        return;
+                    }
+                }
+            }
+            
+            // 开始抽取
+            const result = [];
+            
+            // 第一步：为申请部门和关联部门抽取人员（每个至少1人）
+            allRequiredDepts.forEach(dept => {
+                if (departmentPeopleMap.has(dept)) {
+                    const deptPeople = departmentPeopleMap.get(dept);
+                    const filteredPeople = deptPeople.filter(person => person !== applicant && person !== supervisor && person !== excludedPerson && availablePeople.includes(person));
+                    
+                    if (filteredPeople.length === 0) return;
+                    
+                    // 计算该部门可以抽取的人数范围
+                    const maxDeptCount = Math.min(filteredPeople.length - 1, count - result.length);
+                    const minDeptCount = 1;
+                    
+                    // 随机生成抽取人数
+                    const deptCount = Math.floor(Math.random() * (maxDeptCount - minDeptCount + 1)) + minDeptCount;
+                    
+                    // 随机抽取人员
+                    const shuffled = filteredPeople.sort(() => 0.5 - Math.random());
+                    const deptResult = shuffled.slice(0, deptCount);
+                    
+                    // 添加到结果中
+                    result.push(...deptResult);
+                }
+            });
+            
+            // 第二步：从所有剩余可选人员中抽取剩余需要的人数
+            if (result.length < count) {
+                // 获取剩余可选人员（所有不在排除部门的人员，除了申请人、监督人员、特定排除人员和已抽取的人员）
+                const remainingPeople = availablePeople.filter(person => 
+                    person !== applicant && person !== supervisor && person !== excludedPerson && !result.includes(person)
+                );
+                
+                // 随机抽取剩余人员
+                const shuffled = remainingPeople.sort(() => 0.5 - Math.random());
+                const remainingResult = shuffled.slice(0, count - result.length);
+                
+                result.push(...remainingResult);
+            }
+            
+            // 验证抽取结果是否满足所有规则
+            // 检查每个必需部门是否至少抽取了一人
+            const deptsWithPeople = new Set();
+            for (const person of result) {
+                for (const [dept, people] of departmentPeopleMap.entries()) {
+                    if (people.includes(person)) {
+                        deptsWithPeople.add(dept);
+                        break;
+                    }
+                }
+            }
+            
+            let missingDepts = [];
+            for (const dept of allRequiredDepts) {
+                if (!deptsWithPeople.has(dept)) {
+                    missingDepts.push(dept);
+                }
+            }
+            
+            if (missingDepts.length > 0) {
+                resultElement.textContent = `无法完成抽取："${missingDepts.join('、')}"部门未能抽取到人员，无法满足每个必需部门至少抽取一人的规则。请调整抽取数量或规则设置。`;
+                return;
+            }
+            
+            // 保存当前结果
+            currentResult = result;
+            
+            // 显示结果
+            resultElement.textContent = `抽取结果: ${result.join(', ')}`;
+            
+            // 预览功能已移除，无需更新
+        }
+        
+        async function exportExcel() {
+            try {
+                if (currentResult.length === 0) {
+                    alert('请先抽取人员');
+                    return;
+                }
+                
+                // 获取表单数据
+                const projectName = document.getElementById('projectName').value;
+                const applicantName = document.getElementById('applicantName').value;
+                const applyDepartment = document.getElementById('applyDepartment').value;
+                const peopleCount = document.getElementById('peopleCount').value;
+                const selectedPeopleList = currentResult.join(', ');
+                const handwriteSupervisor = document.getElementById('handwriteSupervisor').checked;
+                const supervisorName = handwriteSupervisor ? '' : document.getElementById('supervisorName').value;
+                
+                // 创建新的工作簿和工作表
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Sheet1');
+                
+                // 设置页面格式（根据党政机关公文格式GB/T 9704-2012）
+                worksheet.pageSetup = {
+                    paperSize: 9, // A4纸张
+                    orientation: 'portrait', // 纵向
+                    scale: 100, // 缩放比例
+                    fitToPage: false, // 不自动调整
+                    fitToWidth: 1, // 适应宽度
+                    fitToHeight: 0, // 不限制高度
+                    horizontalCentered: true, // 水平居中
+                    verticalCentered: false, // 垂直不居中
+                    
+                    // 设置页边距（单位：厘米）
+                    margins: {
+                        top: 3.7, // 上边距：3.7厘米
+                        bottom: 3.5, // 下边距：3.5厘米
+                        left: 2.8, // 左边距：2.8厘米
+                        right: 2.6, // 右边距：2.6厘米
+                        header: 0.0,
+                        footer: 0.0
+                    }
+                };
+                
+                // 设置列宽，ExcelJS使用Excel的字符宽度单位，根据用户反馈再增大0.5
+                worksheet.columns = [
+                    { width: 9.1 },  // A列
+                    { width: 4.2 },  // B列
+                    { width: 22.7 }, // C列
+                    { width: 12.6 }, // D列
+                    { width: 27.5 }  // E列
+                ];
+                
+                // 设置行高，ExcelJS使用点作为单位，使用适当的缩放比例使导出的行高更接近预期
+                // 经过测试，使用1.25的缩放比例可以获得更接近用户期望的效果
+                worksheet.getRow(1).height = 82.5;  // 66 × 1.25 = 82.5
+                worksheet.getRow(2).height = 56.25; // 45 × 1.25 = 56.25
+                worksheet.getRow(3).height = 75;    // 60 × 1.25 = 75
+                worksheet.getRow(4).height = 77.5;  // 62 × 1.25 = 77.5
+                worksheet.getRow(5).height = 82.5;  // 66 × 1.25 = 82.5
+                worksheet.getRow(6).height = 80.125; // 64.1 × 1.25 = 80.125
+                worksheet.getRow(7).height = 365.75; // 合并7-9行的高度：51.25 + 19.5 + 295 = 365.75
+                // 不再设置8-9行的高度，让Excel自动调整
+                
+                // 设置基础样式（不包含边框）
+                const baseStyle = {
+                    font: {
+                        name: '宋体',
+                        size: 16
+                    },
+                    alignment: {
+                        horizontal: 'center',
+                        vertical: 'middle',
+                        wrapText: true
+                    }
+                };
+                
+                // 设置标题样式（20号，加粗，带边框）
+                const titleStyle = {
+                    ...baseStyle,
+                    font: {
+                        ...baseStyle.font,
+                        size: 20,
+                        bold: true
+                    },
+                    border: {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    }
+                };
+                
+                // 重新设计边框设置策略：
+                // 1. 先创建所有单元格并应用基础样式
+                // 2. 然后手动设置每个单元格的边框
+                // 3. 最后合并单元格
+                
+                // 创建所有单元格并应用基础样式
+                for (let rowNum = 1; rowNum <= 9; rowNum++) {
+                    for (let colNum = 1; colNum <= 5; colNum++) {
+                        const cell = worksheet.getCell(rowNum, colNum);
+                        cell.style = { ...baseStyle };
+                    }
+                }
+                
+                // 手动设置每个单元格的边框（模拟表格结构）
+                
+                // 第1行（标题行）
+                for (let colNum = 1; colNum <= 5; colNum++) {
+                    const cell = worksheet.getCell(1, colNum);
+                    cell.style.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' }
+                    };
+                    if (colNum === 1) cell.style.border.left = { style: 'thin' };
+                    if (colNum === 5) cell.style.border.right = { style: 'thin' };
+                }
+                
+                // 第2行（基本信息行）
+                for (let colNum = 1; colNum <= 5; colNum++) {
+                    const cell = worksheet.getCell(2, colNum);
+                    cell.style.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' }
+                    };
+                    if (colNum === 1) cell.style.border.left = { style: 'thin' };
+                    if (colNum === 5) cell.style.border.right = { style: 'thin' };
+                }
+                
+                // 第3行
+                // A3-B3（采购项目标签）
+                worksheet.getCell(3, 1).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                worksheet.getCell(3, 2).style.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // C3-E3（采购项目值）
+                for (let colNum = 3; colNum <= 5; colNum++) {
+                    const cell = worksheet.getCell(3, colNum);
+                    cell.style.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' }
+                    };
+                    if (colNum === 3) cell.style.border.left = { style: 'thin' };
+                    if (colNum === 5) cell.style.border.right = { style: 'thin' };
+                }
+                
+                // 第4行
+                // A4-B4（申请人标签）
+                worksheet.getCell(4, 1).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                worksheet.getCell(4, 2).style.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // C4（申请人值）
+                worksheet.getCell(4, 3).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // D4（申请部门标签）
+                worksheet.getCell(4, 4).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // E4（申请部门值）
+                worksheet.getCell(4, 5).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第5行
+                // A5-B5（抽取人员数量标签）
+                worksheet.getCell(5, 1).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                worksheet.getCell(5, 2).style.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // C5（抽取人员数量值）
+                worksheet.getCell(5, 3).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // D5（抽取人员名单标签）
+                worksheet.getCell(5, 4).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // E5（抽取人员名单值）
+                worksheet.getCell(5, 5).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第6行
+                // A6-B6（监督人员标签）
+                worksheet.getCell(6, 1).style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                worksheet.getCell(6, 2).style.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                // C6-E6（监督人员值）
+                for (let colNum = 3; colNum <= 5; colNum++) {
+                    const cell = worksheet.getCell(6, colNum);
+                    cell.style.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' }
+                    };
+                    if (colNum === 3) cell.style.border.left = { style: 'thin' };
+                    if (colNum === 5) cell.style.border.right = { style: 'thin' };
+                }
+                
+                // 第7行（合并了7-9行的高度）
+                for (let colNum = 1; colNum <= 5; colNum++) {
+                    const cell = worksheet.getCell(7, colNum);
+                    cell.style.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' }
+                    };
+                    if (colNum === 1) cell.style.border.left = { style: 'thin' };
+                    if (colNum === 5) cell.style.border.right = { style: 'thin' };
+                }
+                
+                // 第8-9行：不再合并，设置无边框空白
+                for (let rowNum = 8; rowNum <= 9; rowNum++) {
+                    for (let colNum = 1; colNum <= 5; colNum++) {
+                        const cell = worksheet.getCell(rowNum, colNum);
+                        cell.style = {
+                            ...baseStyle,
+                            border: { style: 'none' }, // 无边框
+                            font: { size: 1 } // 极小字体，节省空间
+                        };
+                    }
+                }
+                
+                // 合并单元格
+                worksheet.mergeCells('A1:E1'); // 第1行标题
+                worksheet.mergeCells('A2:E2'); // 第2行基本信息
+                worksheet.mergeCells('A3:B3'); // 第3行采购项目标签
+                worksheet.mergeCells('C3:E3'); // 第3行采购项目值
+                worksheet.mergeCells('A4:B4'); // 第4行申请人标签
+                worksheet.mergeCells('A5:B5'); // 第5行抽取人员数量标签
+                worksheet.mergeCells('A6:B6'); // 第6行监督人员标签
+                worksheet.mergeCells('C6:E6'); // 第6行监督人员值
+                worksheet.mergeCells('A7:E7'); // 第7行空白（合并7-9行的高度）
+                
+                // 确保合并后的单元格有正确的边框
+                // 第1行标题
+                const titleCell = worksheet.getCell('A1');
+                titleCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第2行基本信息
+                const infoCell = worksheet.getCell('A2');
+                infoCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第3行采购项目标签
+                const projectLabelCell = worksheet.getCell('A3');
+                projectLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第3行采购项目值
+                const projectValueCell = worksheet.getCell('C3');
+                projectValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第4行申请人标签
+                const applicantLabelCell = worksheet.getCell('A4');
+                applicantLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第4行申请人值
+                const applicantValueCell = worksheet.getCell('C4');
+                applicantValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第4行申请部门标签
+                const deptLabelCell = worksheet.getCell('D4');
+                deptLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第4行申请部门值
+                const deptValueCell = worksheet.getCell('E4');
+                deptValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第5行抽取人员数量标签
+                const countLabelCell = worksheet.getCell('A5');
+                countLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第5行抽取人员数量值
+                const countValueCell = worksheet.getCell('C5');
+                countValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第5行抽取人员名单标签
+                const listLabelCell = worksheet.getCell('D5');
+                listLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第5行抽取人员名单值
+                const listValueCell = worksheet.getCell('E5');
+                listValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第6行监督人员标签
+                const supervisorLabelCell = worksheet.getCell('A6');
+                supervisorLabelCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第6行监督人员值
+                const supervisorValueCell = worksheet.getCell('C6');
+                supervisorValueCell.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                
+                // 第7行（合并了7-9行的高度）
+                const mergedCell7 = worksheet.getCell('A7');
+                mergedCell7.style.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' }, // 有完整的底边框
+                    right: { style: 'thin' }
+                };
+                
+                // 填充单元格数据
+                titleCell.value = '评审人员信息表';
+                // 设置标题行样式：22号，加粗
+                titleCell.style.font = { ...baseStyle.font, size: 22, bold: true };
+                infoCell.value = '基本信息';
+                // 设置基本信息行样式：18号，加粗
+                infoCell.style.font = { ...baseStyle.font, size: 18, bold: true };
+                projectLabelCell.value = '采购项目';
+                projectValueCell.value = projectName;
+                applicantLabelCell.value = '申请人';
+                applicantValueCell.value = applicantName;
+                deptLabelCell.value = '申请部门';
+                deptValueCell.value = applyDepartment;
+                countLabelCell.value = '抽取人员数量';
+                countValueCell.value = peopleCount;
+                listLabelCell.value = '抽取人员名单';
+                
+                // 设置抽取人员名单
+                listValueCell.value = selectedPeopleList;
+                
+                // 自动计算并调整字号，确保所有文本都能完整显示在E5单元格中
+                function calculateOptimalFontSize(text) {
+                    // E5单元格的实际宽度（根据之前设置的列宽：27.5）
+                    const cellWidth = 27.5;  // Excel列宽单位
+                    
+                    // 文本长度估算（每个汉字占2个单位宽度，每个英文字母占1个单位宽度）
+                    let textLength = 0;
+                    for (let char of text) {
+                        textLength += /[\u4e00-\u9fa5]/.test(char) ? 2 : 1;
+                    }
+                    
+                    // 根据文本长度估算最佳字号
+                    // 改进的公式：调整阈值，让更长的文本也能使用较大的字号
+                    let fontSize;
+                    if (textLength <= 15) {
+                        fontSize = 16; // 极短文本使用大字号
+                    } else if (textLength <= 30) {
+                        fontSize = 14; // 短文本使用较大字号
+                    } else if (textLength <= 60) {
+                        fontSize = 12; // 中等长度文本使用中等字号
+                    } else if (textLength <= 90) {
+                        fontSize = 11; // 较长文本使用适中字号
+                    } else {
+                        fontSize = 10;  // 极长文本使用小字号（最小10号）
+                    }
+                    
+                    // 限制字号范围在10-16之间，确保可读性
+                    fontSize = Math.min(16, Math.max(10, fontSize));
+                    
+                    return fontSize;
+                }
+                
+                const optimalFontSize = calculateOptimalFontSize(selectedPeopleList);
+                listValueCell.style.font = { ...baseStyle.font, size: optimalFontSize };
+                
+                supervisorLabelCell.value = '监督人员';
+                supervisorValueCell.value = supervisorName || '';
+                
+                // 在第七行的合并单元格中写入抽取的具体情况
+                // 按部门分组抽取结果
+                // 获取部门分布
+                const deptDistribution = getDepartmentDistribution(currentResult);
+                
+                // 构建抽取情况文本
+                let extractionDetails = '抽取的具体情况\n\n';
+                
+                // 遍历每个部门，添加到抽取情况文本中
+                Object.entries(deptDistribution).forEach(([department, people]) => {
+                    extractionDetails += `${department}抽取的人员有：${people.join('、')}\n`;
+                });
+                
+                // 移除最后一个换行符
+                extractionDetails = extractionDetails.trim();
+                
+                // 将抽取情况写入第七行的合并单元格
+                mergedCell7.value = extractionDetails;
+                // 设置字体大小为16号，上对齐和左对齐
+                mergedCell7.style.font = { ...baseStyle.font, size: 16 };
+                mergedCell7.style.alignment = { ...baseStyle.alignment, horizontal: 'left', vertical: 'top' };
+                
+
+                
+                // 导出Excel文件
+                const buffer = await workbook.xlsx.writeBuffer();
+                
+                // 创建Blob并下载
+                const blob = new Blob([buffer], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '评审人员项目库随机抽取记录表.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                alert('Excel导出成功');
+            } catch (error) {
+                console.error('Excel导出失败:', error);
+                alert('导出失败: ' + error.message);
+            }
+        }
+        
+        // PDF导出函数，使用html2canvas解决中文乱码问题
+        async function exportPDF() {
+            try {
+                if (currentResult.length === 0) {
+                    alert('请先抽取人员');
+                    return;
+                }
+                
+                // 获取表单数据
+                const projectName = document.getElementById('projectName').value;
+                const applicantName = document.getElementById('applicantName').value;
+                const applyDepartment = document.getElementById('applyDepartment').value;
+                const peopleCount = document.getElementById('peopleCount').value;
+                const selectedPeopleList = currentResult.join(', ');
+                const handwriteSupervisor = document.getElementById('handwriteSupervisor').checked;
+                const supervisorName = handwriteSupervisor ? '' : document.getElementById('supervisorName').value;
+                
+                // 获取自定义时间戳
+                const timestampInput = document.getElementById('customTimestamp').value;
+                const timestamp = timestampInput ? new Date(timestampInput) : new Date();
+                const formattedTimestamp = timestamp.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZone: 'Asia/Shanghai'
+                });
+                
+                // 获取水印文字，使用默认值如果用户没有输入
+                const customWatermarkText = document.getElementById('watermarkText').value;
+                const watermarkText = customWatermarkText || '大兴安岭地区分行采购委员会';
+                
+                // 获取是否添加水印的选择
+                const includeWatermark = document.getElementById('includeWatermark').checked;
+                
+                // 创建一个临时的HTML元素来显示导出内容
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-10000px';
+                tempDiv.style.top = '-10000px';
+                tempDiv.style.width = '800px';
+                tempDiv.style.padding = '20px';
+                tempDiv.style.backgroundColor = 'white';
+                tempDiv.style.fontFamily = 'Arial, 宋体, sans-serif';
+                
+                // 构建HTML内容
+                const deptDistribution = getDepartmentDistribution(currentResult);
+                let deptDetails = '';
+                Object.entries(deptDistribution).forEach(([department, people]) => {
+                    deptDetails += `<p>${department}抽取的人员有：${people.join('、')}</p>`;
+                });
+                
+                // 设置HTML内容，根据用户选择决定是否包含水印
+                tempDiv.innerHTML = `
+                    <div style="position: relative;">
+                        ${includeWatermark ? `
+                        <!-- 水印背景 -->
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;">
+                            <div style="position: absolute; top: -50px; left: -50px; right: -50px; bottom: -50px; display: flex; flex-wrap: wrap; justify-content: space-between; align-content: space-around;">
+                                <!-- 重复的水印文字，更密集地分布在整个页面 -->
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <!-- 增加额外的水印元素，使分布更密集 -->
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                                <div style="transform: rotate(45deg); font-size: 24px; color: #cccccc; opacity: 0.3; text-align: center; width: 30%; margin: 5px;">
+                                    ${watermarkText}<br>${formattedTimestamp}
+                                </div>
+                            </div>
+                        </div>` : ''}
+                        
+                        <!-- 主要内容 -->
+                        <div style="position: relative; z-index: 1;">
+                            <div style="text-align: right; font-size: 16px; margin-bottom: 10px;">时间：${formattedTimestamp}</div>
+                            
+                            <!-- 根据Excel的列宽比例设置表格列宽，转换为百分比使总和为100% -->
+                            <table style="width: 100%; border-collapse: collapse; font-family: 宋体, Arial, sans-serif; table-layout: fixed; font-size: 20px;">
+                                <colgroup>
+                                    <col style="width: 12%"> <!-- A列：9.1 / 76.1 ≈ 11.96% -->
+                                    <col style="width: 5.5%"> <!-- B列：4.2 / 76.1 ≈ 5.52% -->
+                                    <col style="width: 30%"> <!-- C列：22.7 / 76.1 ≈ 29.83% -->
+                                    <col style="width: 16.6%"> <!-- D列：12.6 / 76.1 ≈ 16.56% -->
+                                    <col style="width: 35.9%"> <!-- E列：27.5 / 76.1 ≈ 36.14% -->
+                                </colgroup>
+                                <!-- 第1行：标题 -->
+                                <tr>
+                                    <td colspan="5" style="border: 1px solid #000; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; height: 82.5px; vertical-align: middle;">
+                                        评审人员信息表
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第2行：基本信息 -->
+                                <tr>
+                                    <td colspan="5" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 22px; font-weight: bold; height: 56.25px; vertical-align: middle;">
+                                        基本信息
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第3行：项目名称 -->
+                                <tr>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 75px; vertical-align: middle;">
+                                        采购项目
+                                    </td>
+                                    <td colspan="3" style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 75px; vertical-align: middle;">
+                                        ${projectName || '-'}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第4行：申请人和申请部门 -->
+                                <tr>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 77.5px; vertical-align: middle;">
+                                        申请人
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 77.5px; vertical-align: middle;">
+                                        ${applicantName || '-'}
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 77.5px; vertical-align: middle;">
+                                        申请部门
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 77.5px; vertical-align: middle;">
+                                        ${applyDepartment || '-'}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第5行：抽取人员数量和名单 -->
+                                <tr>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 82.5px; vertical-align: middle;">
+                                        抽取人员数量
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 82.5px; vertical-align: middle;">
+                                        ${peopleCount || '-'}
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 82.5px; vertical-align: middle;">
+                                        抽取人员名单
+                                    </td>
+                                    <td style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 82.5px; vertical-align: middle;">
+                                        ${selectedPeopleList || '-'}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第6行：监督人员 -->
+                                <tr>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; height: 80.125px; vertical-align: middle;">
+                                        监督人员
+                                    </td>
+                                    <td colspan="3" style="border: 1px solid #000; padding: 10px; font-size: 20px; height: 80.125px; vertical-align: middle;">
+                                        ${supervisorName || ''}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 第7行：抽取的具体情况 -->
+                                <tr>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; vertical-align: top;">
+                                        抽取的具体情况
+                                    </td>
+                                    <td colspan="3" style="border: 1px solid #000; padding: 10px; font-size: 18px; vertical-align: top; word-wrap: break-word; height: 365.75px;">
+                                        ${deptDetails}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                
+                // 添加到DOM
+                document.body.appendChild(tempDiv);
+                
+                // 使用html2canvas将HTML转换为图片
+                const canvas = await html2canvas(tempDiv, {
+                    scale: 2, // 提高分辨率
+                    useCORS: true,
+                    logging: false
+                });
+                
+                // 移除临时元素
+                document.body.removeChild(tempDiv);
+                
+                // 创建PDF文档
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // 计算图片在PDF中的尺寸和位置
+                const imgWidth = 210; // A4宽度
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                // 添加图片到PDF
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                // 导出PDF文件
+                pdf.save('评审人员项目库随机抽取记录表.pdf');
+                alert('PDF导出成功');
+            } catch (error) {
+                console.error('PDF导出失败:', error);
+                alert('导出失败: ' + error.message);
+            }
+        }
+        
+        // 添加水印到指定页面的辅助函数
+        function addWatermarkToPage(doc, watermarkText, pageWidth, pageHeight) {
+            // 设置水印样式
+            doc.setTextColor(150, 150, 150); // 灰色
+            doc.setFontSize(20); // 减小字号
+            
+            // 设置45度角
+            const angle = 45;
+            const textWidth = doc.getTextWidth(watermarkText);
+            const textHeight = 20;
+            
+            // 计算水印间距
+            const diagonalSpacing = Math.sqrt(textWidth * textWidth + textHeight * textHeight) * 2;
+            
+            // 添加水印到整个页面
+            for (let x = 0; x < pageWidth + diagonalSpacing; x += diagonalSpacing) {
+                for (let y = 0; y < pageHeight + diagonalSpacing; y += diagonalSpacing) {
+                    // 使用更简单的方式添加水印
+                    doc.text(watermarkText, x, y, {
+                        rotation: angle,
+                        maxWidth: pageWidth
+                    });
+                }
+            }
+            
+            doc.setTextColor(0, 0, 0);
+        }
+    </script>
+</body>
+
+</html>
